@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source /opt/ros/eloquent/setup.sh
-cd ~/tello_ros_ws
+source /opt/ros/foxy/setup.sh
+cd /home/tello_ros_ws
 source install/setup.bash
 export GAZEBO_MODEL_PATH=${PWD}/install/tello_gazebo/share/tello_gazebo/models
 export GAZEBO_MODEL_DATABASE_URI=
