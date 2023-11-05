@@ -1,4 +1,4 @@
 #!/bin/bash
 
-source /opt/ros/eloquent/setup.sh
+source /opt/ros/foxy/setup.sh
 ros2 run rqt_image_view rqt_image_view
