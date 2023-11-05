@@ -8,6 +8,6 @@ docker run -it \
 	--volume="/home/$USER/Studia/Sem2/ARL/shared:/home/shared:rw" \
 	--privileged \
 	--network=host \
-	--name="ARL_PROJECT" \
-	arl_project:v1.0\
+	--name="TELLO_ROS" \
+	tello_ros\
 	/bin/bash
