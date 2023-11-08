@@ -1,0 +1,11 @@
+1. 
+ros2 launch tello_gazebo simple_launch.py
+ # uruchomienie symulacji
+ 
+2.  ros2 run tello_controller controller
+# uruchomiienie skryptu controller.py
+
+3.
+ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
+# publikacja pustego topica do wystartowania drona
+
