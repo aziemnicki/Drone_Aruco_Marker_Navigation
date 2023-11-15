@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'controller = tello_controller.controller:main',
+            'PID = tello_controller.PID:main',
         ],
     },
 )
