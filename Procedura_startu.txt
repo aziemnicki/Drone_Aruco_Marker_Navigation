@@ -12,10 +12,6 @@ ros2 launch tello_gazebo simple_launch.py
 ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
 # publikacja pustego topica do wystartowania drona
 
-5.
+5. Nieaktualne
 # uruchomienie gazebo topica do pobrania pozycji drona
 ros2 run pkg_g2rr g2rr tello1
-
-6. 
-# uruchomienie wyświetlenia pozycji z gazebo 
-ros2 run tello_controller PID
