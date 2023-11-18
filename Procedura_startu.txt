@@ -15,3 +15,13 @@ ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
 5. Nieaktualne
 # uruchomienie gazebo topica do pobrania pozycji drona
 ros2 run pkg_g2rr g2rr tello1
+
+6. Aktualne
+# uruchomienie gazebo topica do pobrania pozycji drona
+# poniższy kod wrzucić do pliku .world po <world name='default'>:
+<plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+    <ros>
+        <namespace>/gazebo</namespace>
+    </ros>
+    <!-- <update_rate>0.1</update_rate> -->
+</plugin>
