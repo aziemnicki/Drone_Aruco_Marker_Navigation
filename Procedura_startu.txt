@@ -25,3 +25,7 @@ ros2 run pkg_g2rr g2rr tello1
     </ros>
     <!-- <update_rate>0.1</update_rate> -->
 </plugin>
+
+7.
+# uruchomienie noda wykrywającego aruco
+ros2 launch ros2_aruco aruco_recognition.launch.py
