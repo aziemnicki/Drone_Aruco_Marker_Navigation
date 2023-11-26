@@ -22,6 +22,9 @@ setup(
         'console_scripts': [
             'controller = tello_controller.controller:main',
             'PID = tello_controller.PID:main',
+            'controller_pid = tello_controller.controller_pid:main',
+            'controller_spin = tello_controller.controller_spin:main'
+
         ],
     },
 )
