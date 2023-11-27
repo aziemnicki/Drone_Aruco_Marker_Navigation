@@ -1,7 +1,7 @@
 from tello_msgs.srv import TelloAction
 from tello_msgs.msg import TelloResponse
 from tello_interface.srv import TelloState
-import numpy as np 
+
 import time
 from enum import Enum
 from scipy.spatial.transform import Rotation
@@ -31,18 +31,14 @@ class ControllerNode(Node):
     state = TelloState.LANDED
     next_state = TelloState.NONE
     action_done = False
-    timer_running = False
 
     pos_x = pos_y = pos_z = ori_roll = ori_pitch = ori_yaw = 0.0
-
-    # pid_x = PID(1.68, 0.86, 1.68)
-    # pid_y = PID(3.0, 0.1, 2.02)
-    # pid_z = PID(1.68, 2.0, 10.8)
 
     pid_x = PID(1.5, 0.001, 0.5)
     pid_y = PID(1.5, 0.001, 0.5)
     pid_z = PID(1.5, 0.001, 0.5)
     pid_yaw = PID(1.0, 0.0001, 0.5)
+
     index = 0
     points = [[1.0, 0.0, 1.3], [1.0, 1.0, 1.3], [0.0, 1.0, 1.3], [0.0, 0.0, 1.3]]
 
@@ -57,8 +53,7 @@ class ControllerNode(Node):
         self.tello_service_client = self.create_client(TelloAction, '/drone1/tello_action')
         self.service_request = TelloAction.Request()
 
-        # self.tim = Timer(0.1, self.mission_func)
-        self.get_logger().info(f'logger sobie dziala')
+        self.get_logger().info('Node initialized')
 
     def position_callback(self, msg):
         idx = msg.name.index('tello_1')
@@ -105,14 +100,9 @@ class ControllerNode(Node):
 
         if self.state == self.TelloState.HOVERING:
             if self.action_done:
-                # self.tim.cancel()
-                self.get_logger().info('Timer cancelled')
-                # self.action_done = False
                 self.landing_func()
             else:
-                if not self.action_done:
-                    self.mission_func()
-                    # self.flying_func()
+                self.mission_func()
 
     def tello_response_callback(self, msg):
         if msg.rc == 1:
@@ -136,27 +126,21 @@ class ControllerNode(Node):
         self.state = self.TelloState.FLYING
         self.next_state = self.TelloState.FLYING
 
-
         if self.action_done:
             self.next_state = self.TelloState.HOVERING
             self.controller()
-            
         else:
             self.mission_func()
     
     def mission_func(self):
         # misja do wykonania
-        ###
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
-        # self.pid_x.setpoint = 2.0
-        # self.pid_y.setpoint = 0.8
-        # self.pid_z.setpoint = 1.3
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint = self.points[self.index]
-
+        
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
-        if dist > 0.05:             # tolerancja 5 cm 
+        if dist > 0.05:
             vel_x_glob = self.pid_x(self.pos_x)
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
@@ -168,27 +152,24 @@ class ControllerNode(Node):
             self.get_logger().info(f"vel x: {vel_x_loc}")
             self.get_logger().info(f"vel y: {vel_y_loc}")
             self.get_logger().info(f"vel z: {vel_z_glob}")
-
             self.get_logger().info(f"position x: {self.pos_x}")
             self.get_logger().info(f"position y: {self.pos_y}")
             self.get_logger().info(f"position z: {self.pos_z}")
 
             self.service_request.cmd = f'rc {vel_x_loc} {vel_y_loc} {vel_z_glob} 0.0'
             self.tello_service_client.call_async(self.service_request)
-            self.get_logger().info(f'koniec if')
             Timer(0.1, self.mission_func).start()
-            # self.flying_func()
         else:    
             self.get_logger().info(f'Goal position reached: {self.pos_z}')
             self.service_request.cmd = f'rc 0 0 0 0.0'
             self.tello_service_client.call_async(self.service_request)
+
             if self.index < len(self.points)-1:
                 self.index += 1
             else:
                 self.action_done = True
-                self.next_state = self.TelloState.HOVERING
+
             self.controller()
-            # self.flying_func()
             
     def landing_func(self):
         self.state = self.TelloState.LANDING
