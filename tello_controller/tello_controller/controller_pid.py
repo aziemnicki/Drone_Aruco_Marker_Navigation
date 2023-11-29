@@ -102,7 +102,7 @@ class ControllerNode(Node):
             if self.action_done:
                 self.landing_func()
             else:
-                self.mission_func()
+                self.flying_func()
 
     def tello_response_callback(self, msg):
         if msg.rc == 1:
@@ -127,7 +127,8 @@ class ControllerNode(Node):
         self.next_state = self.TelloState.FLYING
 
         if self.action_done:
-            self.next_state = self.TelloState.HOVERING
+            self.state = self.TelloState.HOVERING
+            self.next_state = self.TelloState.NONE
             self.controller()
         else:
             self.mission_func()
@@ -158,7 +159,7 @@ class ControllerNode(Node):
 
             self.service_request.cmd = f'rc {vel_x_loc} {vel_y_loc} {vel_z_glob} 0.0'
             self.tello_service_client.call_async(self.service_request)
-            Timer(0.1, self.mission_func).start()
+            Timer(0.1, self.flying_func).start()
         else:    
             self.get_logger().info(f'Goal position reached: {self.pos_z}')
             self.service_request.cmd = f'rc 0 0 0 0.0'
@@ -169,7 +170,7 @@ class ControllerNode(Node):
             else:
                 self.action_done = True
 
-            self.controller()
+            self.flying_func()
             
     def landing_func(self):
         self.state = self.TelloState.LANDING
