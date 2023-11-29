@@ -29,3 +29,6 @@ ros2 run pkg_g2rr g2rr tello1
 7.
 # uruchomienie noda wykrywającego aruco
 ros2 launch ros2_aruco aruco_recognition.launch.py
+
+8. Uruchomienie aruco subscribera
+ros2 run tello_controller aruco_node
