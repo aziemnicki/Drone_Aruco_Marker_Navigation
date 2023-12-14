@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation
 from simple_pid import PID
 import numpy as np
 from threading import Timer
-
+from tello_controller.cont_pid import PIDController
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
@@ -35,28 +35,30 @@ class ControllerNode(Node):
 
     pos_x = pos_y = pos_z = ori_roll = ori_pitch = ori_yaw = 0.0
 
-    pid_x = PID(0.7, 0.001, 0.25)
-    pid_y = PID(0.7, 0.001, 0.25)
-    pid_z = PID(0.7, 0.001, 0.25)
-    pid_yaw = PID(0.7, 0.0, 0.25)
+    pid_x = PIDController(Kp=0.7, Ki=0.001, Kd=0.25)
+    pid_y = PIDController(Kp=0.7, Ki=0.001, Kd=0.25)
+    pid_z = PIDController(Kp=0.7, Ki=0.001, Kd=0.25)
+    pid_yaw = PIDController(Kp=0.7, Ki=0.00, Kd=0.25, rotation=True)
 
     index = 0
-    points = [
-    [0.0, 0.0, 0.5,  3.12],
-    [0.0, 1.0, 0.5,  3.12],
-    [-1.0, 1.0, 0.5,  4.69],
-    [-2.0, 1.0, 0.5,  4.69],
-    [-2.0, 0.0, 0.5,  0.05],
-    [-2.0, -1.0, 0.5,  0.05],
-    [-1.0, -1.0, 0.5,  1.57],
-    [0.0, -1.0, 0.5,  3.12],
-    [0.0, 0.0, 0.5,  3.12]
-    ]
+    # points = [
+    # [0.0, 0.0, 0.5,  3.14],
+    # [0.0, 1.0, 0.5,  3.14],
+    # [-1.0, 1.0, 0.5,  -1.57],
+    # [-2.0, 1.0, 0.5,  -1.57],
+    # [-2.0, 0.0, 0.5,  0.05],
+    # [-2.0, -1.0, 0.5,  0.05],
+    # [-1.0, -1.0, 0.5,  1.57],
+    # [0.0, -1.0, 0.5,  3.14],
+    # [0.0, 0.0, 0.5,  3.14]
+    # ]
+    points = [[0.0, 0.0, 0.5,  3.14],
+]
     visited_aruco = []
     aruco_dict = {
-        0: [[0.0, 1.0, 0.0,  0.0],[-1.0, 0.0, 0.0,  1.57]],
-        1: [[-1.0, 0.0, 0.0,  0],[0.0, -1.0, 0.0,  -4.65]],
-        2: [[0.0, -1.0, 0.0,  0.00],[1.0, 0.0, 0.0,  1.52]],
+        0: [[0.0, 1.0, 0.0,  0.0],[-1.0, 0.0, 0.0,  -4.71]],
+        1: [[-1.0, 0.0, 0.0,  0],[0.0, -1.0, 0.0,  1.57]],
+        2: [[0.0, -1.0, 0.0,  0.0],[1.0, 0.0, 0.0,  1.57]],
         3: [[1.0, 0.0, 0.0,  1.57],[0.0, 1.0, 0.0,  0]]
         }
     last_marker = False
@@ -89,10 +91,11 @@ class ControllerNode(Node):
 
         self.ori_roll = roll
         self.ori_pitch = pitch
-        if yaw < -np.pi/4:
-            self.ori_yaw = yaw + 2.25* np.pi
-        else:
-            self.ori_yaw = yaw + 0.25*np.pi
+        self.ori_yaw = yaw
+        # if yaw < -np.pi/4:
+        #     self.ori_yaw = yaw + 2.25* np.pi
+        # else:
+        #     self.ori_yaw = yaw + 0.25*np.pi
 
         # self.get_logger().info(f"position x: {self.pos_x}")
         # self.get_logger().info(f"position y: {self.pos_y}")
@@ -102,17 +105,17 @@ class ControllerNode(Node):
         # self.get_logger().info(f"orientation y: {self.ori_yaw}")
 
     def aruco_callback(self, markers):
-        # for marker in markers.marker_ids:
-        #     marker_id = marker
-        #     # z = round(marker_pose.position.z, 3)
-        #     if marker_id not in self.visited_aruco:
-        #         self.visited_aruco.append(marker_id)
-        #         for next_move in self.aruco_dict[marker_id]:
-        #             self.points.append([x + y for x, y in zip(self.points[-1], next_move)])
-        #     if marker_id == 3:
-        #         self.last_marker = True
-        # self.get_logger().info(f'{self.points}')
-        pass
+        for marker in markers.marker_ids:
+            marker_id = marker
+            # z = round(marker_pose.position.z, 3)
+            if marker_id not in self.visited_aruco:
+                self.visited_aruco.append(marker_id)
+                for next_move in self.aruco_dict[marker_id]:
+                    self.points.append([x + y for x, y in zip(self.points[-1], next_move)])
+            if marker_id == 3:
+                self.last_marker = True
+        self.get_logger().info(f'{self.points}')
+
 
     def state_callback(self, request, response):
         response.state = str(self.state)
@@ -174,7 +177,7 @@ class ControllerNode(Node):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.points[self.index]
-        self.pid_yaw.setpoint += 0.25*np.pi
+        # self.pid_yaw.setpoint += 0.25*np.pi
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
         if dist > 0.05 or angle_diff > 0.018:
@@ -183,10 +186,13 @@ class ControllerNode(Node):
             vel_z_glob = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
             
-            temp = self.ori_yaw - 0.25*np.pi
+           
+            # temp = self.ori_yaw - 0.25*np.pi
             
-            vel_x_loc = (vel_x_glob * np.cos(temp)) + (vel_y_glob * np.sin(temp))
-            vel_y_loc = (-vel_x_glob * np.sin(temp)) + (vel_y_glob * np.cos(temp))
+            # vel_x_loc = (vel_x_glob * np.cos(temp)) + (vel_y_glob * np.sin(temp))
+            # vel_y_loc = (-vel_x_glob * np.sin(temp)) + (vel_y_glob * np.cos(temp))
+            vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
+            vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
             self.get_logger().info(f'distance: {dist}')
             self.get_logger().info(f"vel x: {vel_x_loc}")
