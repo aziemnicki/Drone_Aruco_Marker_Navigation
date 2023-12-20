@@ -1,22 +1,23 @@
 1. 
-# xhost +local:root
+xhost +local:root
 
-2.
+2. # Uruchomienie symulacji
 ros2 launch tello_gazebo simple_launch.py
- # uruchomienie symulacji
  
-3.  ros2 run tello_controller controller
-# uruchomiienie skryptu controller.py
+3. # Uruchomiienie skryptu controller.py  
+ros2 run tello_controller controller
 
-4.
+4. # Publikacja pustego topica do wystartowania drona
 ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
-# publikacja pustego topica do wystartowania drona
 
-5. Nieaktualne
+5. # Uruchomienie OptiTracka
+ros2 run optitrack optitrack_node
+
+6. Nieaktualne
 # uruchomienie gazebo topica do pobrania pozycji drona
 ros2 run pkg_g2rr g2rr tello1
 
-6. Aktualne
+7. Aktualne
 # uruchomienie gazebo topica do pobrania pozycji drona
 # poniższy kod wrzucić do pliku .world po <world name='default'>:
 <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
@@ -26,9 +27,9 @@ ros2 run pkg_g2rr g2rr tello1
     <!-- <update_rate>0.1</update_rate> -->
 </plugin>
 
-7.
+8.
 # uruchomienie noda wykrywającego aruco
 ros2 launch ros2_aruco aruco_recognition.launch.py
 
-8. Uruchomienie aruco subscribera
+9. Uruchomienie aruco subscribera
 ros2 run tello_controller aruco_node
