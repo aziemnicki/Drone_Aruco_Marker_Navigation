@@ -73,7 +73,8 @@ class ControllerNode(Node):
         self.tello_service_server = self.create_service(TelloState, '/iisrl/tello_state', self.state_callback)
         self.tello_service_client = self.create_client(TelloAction, '/drone1/tello_action')
         self.service_request = TelloAction.Request()
-
+        #subscription - optitrack 
+        self.ot_subscription = self.create_subscription(Pose, "/optitrack/pose", self.optitrack_callback, 10)
         self.get_logger().info('Node initialized')
 
     def position_callback(self, msg):
@@ -115,6 +116,13 @@ class ControllerNode(Node):
             if marker_id == 3:
                 self.last_marker = True
         self.get_logger().info(f'{self.points}')
+
+    #callback - optitrack 
+    def optitrack_callback(self, msg):
+    # self.get_logger().info("optitrack_callback")
+    self.opti_pose = msg
+    self.get_logger().info(f"opti_pose x: {self.opti_pose.position.x}")
+    self.get_logger().info(f"opti_pose y: {self.opti_pose.position.y}")
 
 
     def state_callback(self, request, response):
