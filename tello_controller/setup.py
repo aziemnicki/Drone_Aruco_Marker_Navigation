@@ -20,12 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'controller = tello_controller.controller:main',
-            'PID = tello_controller.PID:main',
-            'controller_pid = tello_controller.controller_pid:main',
-            'controller_spin = tello_controller.controller_spin:main',
+            'controller_gazebo = tello_controller.controller_gazebo:main',
+            'controller_optitrack = tello_controller.controller_optitrack:main',
             'aruco_node = tello_controller.aruco_node:main',
-
         ],
     },
 )
