@@ -13,12 +13,7 @@ ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
 5. # Uruchomienie OptiTracka
 ros2 run optitrack optitrack_node
 
-6. Nieaktualne
-# uruchomienie gazebo topica do pobrania pozycji drona
-ros2 run pkg_g2rr g2rr tello1
-
-7. Aktualne
-# uruchomienie gazebo topica do pobrania pozycji drona
+7. Publikowanie pozycji z gazebo
 # poniższy kod wrzucić do pliku .world po <world name='default'>:
 <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
     <ros>
