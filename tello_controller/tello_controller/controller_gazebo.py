@@ -2,21 +2,20 @@ from tello_msgs.srv import TelloAction
 from tello_msgs.msg import TelloResponse
 from tello_interface.srv import TelloState
 
+import rclpy
+from rclpy.node import Node
+
+from std_msgs.msg import Empty
+from geometry_msgs.msg import Twist, Pose
+from gazebo_msgs.msg import ModelStates
+from ros2_aruco_interfaces.msg import ArucoMarkers
+
 import time
 from enum import Enum
 from scipy.spatial.transform import Rotation
-from simple_pid import PID
 import numpy as np
 from threading import Timer
-from tello_controller.cont_pid import PIDController
-import rclpy
-from rclpy.node import Node
-from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
-from ros2_aruco_interfaces.msg import ArucoMarkers
-
-from std_msgs.msg import Empty
-from gazebo_msgs.msg import ModelStates
+from tello_controller.pid import PIDController
 
 
 class ControllerNode(Node):
@@ -35,47 +34,40 @@ class ControllerNode(Node):
 
     pos_x = pos_y = pos_z = ori_roll = ori_pitch = ori_yaw = 0.0
 
-    pid_x = PIDController(Kp=0.7, Ki=0.001, Kd=0.25)
-    pid_y = PIDController(Kp=0.7, Ki=0.001, Kd=0.25)
-    pid_z = PIDController(Kp=0.7, Ki=0.001, Kd=0.25)
-    pid_yaw = PIDController(Kp=0.7, Ki=0.00, Kd=0.25, rotation=True)
+    pid_x = PIDController(0.6, 0.001, 0.25)
+    pid_y = PIDController(0.6, 0.001, 0.25)
+    pid_z = PIDController(0.6, 0.001, 0.25)
+    pid_yaw = PIDController(0.7, 0.0, 0.25, rotation=True)
 
+    vel_ratio = 1.0
     index = 0
-    # points = [
-    # [0.0, 0.0, 0.5,  3.14],
-    # [0.0, 1.0, 0.5,  3.14],
-    # [-1.0, 1.0, 0.5,  -1.57],
-    # [-2.0, 1.0, 0.5,  -1.57],
-    # [-2.0, 0.0, 0.5,  0.05],
-    # [-2.0, -1.0, 0.5,  0.05],
-    # [-1.0, -1.0, 0.5,  1.57],
-    # [0.0, -1.0, 0.5,  3.14],
-    # [0.0, 0.0, 0.5,  3.14]
-    # ]
-    points = [[0.0, 0.0, 0.5,  3.14],
-]
     visited_aruco = []
+    # last_marker = False
+    points = [[2.15, -1.0, 0.75,  3.14]]
     aruco_dict = {
-        0: [[0.0, 1.0, 0.0,  0.0],[-1.0, 0.0, 0.0,  -4.71]],
-        1: [[-1.0, 0.0, 0.0,  0],[0.0, -1.0, 0.0,  1.57]],
-        2: [[0.0, -1.0, 0.0,  0.0],[1.0, 0.0, 0.0,  1.57]],
-        3: [[1.0, 0.0, 0.0,  1.57],[0.0, 1.0, 0.0,  0]]
+        0: [[0.0, 0.65, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
+        1: [[-0.35, 0.0, 0.0, 4.71], [ 0.0, 0.27, 0.0, 0.0]],
+        2: [[0.0, 0.67, 0.0, 0.0]],
+        3: [[0.0, 1.07, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
+        4: [[-1.15, 0.0, 0.0, 1.57], [0.0, -0.65, 0.0, 0.0]],
+        5: [[0.0, -0.65, 0.0, 1.57], [0.9, 0.0, 0.0, 0.0]],
+        6: [[0.1, 0.0, 0.0, -1.57], [0.0, -0.35, 0.0, 0.0]]
         }
-    last_marker = False
+
 
     def __init__(self):
         super().__init__('controller_node')
         self.tello_controller = self.create_subscription(Empty, '/iisrl/tello_controller', self.main_callback, 10)
         self.tello_response = self.create_subscription(TelloResponse, '/drone1/tello_response', self.tello_response_callback, 10)
+        self.position_sub = self.create_subscription(ModelStates, '/gazebo/model_states', self.position_callback, 10)
         self.aruco_sub = self.create_subscription(ArucoMarkers, '/aruco_markers', self.aruco_callback, 10)
-        self.tello_position = self.create_subscription(ModelStates, '/gazebo/model_states', self.position_callback, 10)
 
         self.tello_service_server = self.create_service(TelloState, '/iisrl/tello_state', self.state_callback)
         self.tello_service_client = self.create_client(TelloAction, '/drone1/tello_action')
         self.service_request = TelloAction.Request()
-        #subscription - optitrack 
-        self.ot_subscription = self.create_subscription(Pose, "/optitrack/pose", self.optitrack_callback, 10)
+
         self.get_logger().info('Node initialized')
+
 
     def position_callback(self, msg):
         idx = msg.name.index('tello_1')
@@ -93,36 +85,17 @@ class ControllerNode(Node):
         self.ori_roll = roll
         self.ori_pitch = pitch
         self.ori_yaw = yaw
-        # if yaw < -np.pi/4:
-        #     self.ori_yaw = yaw + 2.25* np.pi
-        # else:
-        #     self.ori_yaw = yaw + 0.25*np.pi
 
-        # self.get_logger().info(f"position x: {self.pos_x}")
-        # self.get_logger().info(f"position y: {self.pos_y}")
-        # self.get_logger().info(f"position z: {self.pos_z}")
-        # self.get_logger().info(f"orientation r: {self.ori_roll}")
-        # self.get_logger().info(f"orientation p: {self.ori_pitch}")
-        # self.get_logger().info(f"orientation y: {self.ori_yaw}")
 
     def aruco_callback(self, markers):
-        for marker in markers.marker_ids:
-            marker_id = marker
-            # z = round(marker_pose.position.z, 3)
-            if marker_id not in self.visited_aruco:
+        for i, marker_id in enumerate(markers.marker_ids):
+            if marker_id == 7:
+                break
+                # self.last_marker = True
+            if marker_id not in self.visited_aruco and markers.poses[i].position.z < 0.5:
                 self.visited_aruco.append(marker_id)
                 for next_move in self.aruco_dict[marker_id]:
                     self.points.append([x + y for x, y in zip(self.points[-1], next_move)])
-            if marker_id == 3:
-                self.last_marker = True
-        self.get_logger().info(f'{self.points}')
-
-    #callback - optitrack 
-    def optitrack_callback(self, msg):
-    # self.get_logger().info("optitrack_callback")
-    self.opti_pose = msg
-    self.get_logger().info(f"opti_pose x: {self.opti_pose.position.x}")
-    self.get_logger().info(f"opti_pose y: {self.opti_pose.position.y}")
 
 
     def state_callback(self, request, response):
@@ -131,14 +104,16 @@ class ControllerNode(Node):
 
         return response
 
+
     def main_callback(self, msg):
         self.get_logger().info('Node activated')
-        self.action_done = False # False, gdy istnieje misja do wykonania; True, gdy testujemy start i ladowanie
+        self.action_done = False
 
         self.state = self.TelloState.LANDED
         self.next_state = self.TelloState.TAKINGOFF
 
         self.controller()
+
 
     def controller(self):
         if self.state == self.TelloState.LANDED and self.next_state == self.TelloState.TAKINGOFF:
@@ -148,7 +123,8 @@ class ControllerNode(Node):
             if self.action_done:
                 self.landing_func()
             else:
-                self.mission_func()
+                self.flying_func()
+
 
     def tello_response_callback(self, msg):
         if msg.rc == 1:
@@ -156,6 +132,7 @@ class ControllerNode(Node):
             self.next_state = self.TelloState.NONE
 
         self.controller()
+
 
     def taking_off_func(self):
         self.state = self.TelloState.TAKINGOFF
@@ -168,57 +145,44 @@ class ControllerNode(Node):
         self.service_request.cmd = 'takeoff'
         self.tello_service_client.call_async(self.service_request)
 
-    def flying_func(self):            
 
+    def flying_func(self):            
         self.state = self.TelloState.FLYING
         self.next_state = self.TelloState.FLYING
 
         if self.action_done:
-            self.next_state = self.TelloState.HOVERING
+            self.state = self.TelloState.HOVERING
+            self.next_state = self.TelloState.NONE
             self.controller()
         else:
             self.mission_func()
     
+
     def mission_func(self):
         # misja do wykonania
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.points[self.index]
-        # self.pid_yaw.setpoint += 0.25*np.pi
+
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
+
         if dist > 0.05 or angle_diff > 0.018:
             vel_x_glob = self.pid_x(self.pos_x)
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
             
-           
-            # temp = self.ori_yaw - 0.25*np.pi
-            
-            # vel_x_loc = (vel_x_glob * np.cos(temp)) + (vel_y_glob * np.sin(temp))
-            # vel_y_loc = (-vel_x_glob * np.sin(temp)) + (vel_y_glob * np.cos(temp))
             vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
             vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
-            self.get_logger().info(f'distance: {dist}')
-            self.get_logger().info(f"vel x: {vel_x_loc}")
-            self.get_logger().info(f"vel y: {vel_y_loc}")
-            self.get_logger().info(f"vel z: {vel_z_glob}")
-            self.get_logger().info(f"position x: {self.pos_x}")
-            self.get_logger().info(f"position y: {self.pos_y}")
-            self.get_logger().info(f"position z: {self.pos_z}")
-            self.get_logger().info(f"orientation: {self.ori_yaw}")
-
-            self.service_request.cmd = f'rc {vel_x_loc} {vel_y_loc} {vel_z_glob} {vel_yaw}'
+            self.service_request.cmd = f'rc {vel_x_loc * self.vel_ratio} {vel_y_loc * self.vel_ratio} {vel_z_glob * self.vel_ratio} {vel_yaw * self.vel_ratio}'
             self.tello_service_client.call_async(self.service_request)
             Timer(0.1, self.mission_func).start()
         else:    
             self.get_logger().info(f'Goal position reached: {self.pos_z}')
             self.service_request.cmd = f'rc 0 0 0 0.0'
-          
-
             self.tello_service_client.call_async(self.service_request)
 
             if self.index < len(self.points)-1:
@@ -227,8 +191,10 @@ class ControllerNode(Node):
                 self.action_done = True
                 self.index = 0
 
+            self.state = self.TelloState.HOVERING
             self.controller()
             
+
     def landing_func(self):
         self.state = self.TelloState.LANDING
         self.next_state = self.TelloState.LANDED
