@@ -28,3 +28,9 @@ ros2 launch ros2_aruco aruco_recognition.launch.py
 
 9. Uruchomienie aruco subscribera
 ros2 run tello_controller aruco_node
+
+10. Optitrack
+ros2 launch tello_driver teleop_launch.py
+
+11. Lądowanie
+ros2 service call /tello_action tello_msgs/TelloAction "{cmd: 'land'}"
