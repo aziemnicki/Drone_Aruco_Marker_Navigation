@@ -29,7 +29,7 @@ ros2 launch ros2_aruco aruco_recognition.launch.py
 9. Uruchomienie aruco subscribera
 ros2 run tello_controller aruco_node
 
-10. ?
+10. Połączenie z dronem do przesyłania komend
 ros2 launch tello_driver teleop_launch.py
 
 11. Lądowanie
