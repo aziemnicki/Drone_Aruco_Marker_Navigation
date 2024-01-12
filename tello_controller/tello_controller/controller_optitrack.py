@@ -39,18 +39,23 @@ class ControllerNode(Node):
     pid_z = PIDController(1.5, 0.001, 0.5)
     pid_yaw = PIDController(1.0, 0.0001, 0.5, rotation=True)
 
-    vel_ratio = 1.0
     index = 0
+    # points = [
+    #     [0.0, 1.0, 0.75, 0.0],
+    #     [0.0, 1.0, 0.75, 3.14],
+    #     [-1.0, 1.0, 0.75, -1.57],
+    #     [-2.0, 1.0, 0.75, -1.57],
+    #     [-2.0, 0.0, 0.75, 0.0],
+    #     [-2.0, -1.0, 0.75, 0.0],
+    #     [-1.0, -1.0, 0.75, 1.57],
+    #     [0.0, -1.0, 0.75, 3.14],
+    #     [0.0, 0.0, 0.75, 3.14]]
+
     points = [
-        [0.0, 0.0, 0.5, 3.14],
-        [0.0, 1.0, 0.5, 3.14],
-        [-1.0, 1.0, 0.5, -1.57],
-        [-2.0, 1.0, 0.5, -1.57],
-        [-2.0, 0.0, 0.5, 0.0],
-        [-2.0, -1.0, 0.5, 0.0],
-        [-1.0, -1.0, 0.5, 1.57],
-        [0.0, -1.0, 0.5, 3.14],
-        [0.0, 0.0, 0.5, 3.14]]
+        [1.0, 0.0, 0.0, 0.0],
+        [1.0, 0.5, 0.0, 0.0],
+        [-1.0, 0.5, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0]]
 
     # visited_aruco = []
     # # last_marker = False
@@ -96,6 +101,8 @@ class ControllerNode(Node):
         self.ori_pitch = pitch
         self.ori_yaw = yaw
 
+        # self.get_logger().info(f"position z: {self.ori_yaw}")
+
     
     # def aruco_callback(self, markers):
     #     for i, marker_id in enumerate(markers.marker_ids):
@@ -134,6 +141,7 @@ class ControllerNode(Node):
 
         if self.state == self.TelloState.HOVERING:
             if self.action_done:
+                # self.get_logger().info('laduje sobie')
                 self.landing_func()
             else:
                 # self.get_logger().info('dddd')
@@ -175,52 +183,95 @@ class ControllerNode(Node):
     
 
     def mission_func(self):
-        # self.get_logger().info('gggg')
+        self.get_logger().info('gggg')
         # misja do wykonania
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
+            
+        self.get_logger().info(f'index = {self.points[self.index]}')
+        self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.points[self.index]
 
-        # self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.points[self.index]
-
-        self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = [0.5, 0.5, 0.0, 0.0]
+        # self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = [1.0, 0.0, 0.0, 0.0]
         
-        dist_err = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
+        dist_err = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2)
         angle_err = abs(self.ori_yaw - self.pid_yaw.setpoint)
 
-        # self.get_logger().info(f'Dist_err: {dist_err}')
-        # self.get_logger().info(f'Angle_err: {angle_err}')
+        self.get_logger().info(f'Dist_err: {dist_err}')
+        self.get_logger().info(f'Angle_err: {angle_err}')
         
-        if dist_err > 0.05 or angle_err > 0.018:
+        # if dist_err > 0.15 or angle_err > 0.018:
+        if dist_err > 0.1:
+            # self.get_logger().info('hhhh')
             vel_x_glob = self.pid_x(self.pos_x)
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
 
-            vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
-            vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
+            vel_x_loc = vel_x_glob
+            vel_y_loc = vel_y_glob
 
-            # self.get_logger().info(f"vel x: {vel_x_loc}")
-            # self.get_logger().info(f"vel y: {vel_y_loc}")
+            # vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
+            # vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
+
+            vel_x_loc = (vel_x_loc * 15) / 1.4
+            vel_y_loc = (vel_y_loc * 15) / 1.4
+
+            if vel_x_loc > 1.0 and vel_x_loc < 6.0:
+                vel_x_loc = 6.0
+
+            if vel_x_loc < -1.0 and vel_x_loc > -6.0:
+                vel_x_loc = -6.0
+
+            if vel_y_loc > 1.0 and vel_y_loc < 6.0:
+                vel_y_loc = 6.0
+
+            if vel_y_loc < -1.0 and vel_y_loc > -6.0:
+                vel_y_loc = -6.0
+
+            if vel_x_loc > 15:
+                vel_x_loc = 15
+            elif vel_x_loc < -15:
+                vel_x_loc = -15
+
+            if vel_y_loc > 15:
+                vel_y_loc = 15
+            elif vel_y_loc < -15:
+                vel_y_loc = -15
+
+            
+
+            self.get_logger().info(f"vel x: {vel_x_loc}")
+            self.get_logger().info(f"vel y: {vel_y_loc}")
             # self.get_logger().info(f"vel z: {vel_z_glob}")
-            # self.get_logger().info(f"position x: {self.pos_x}")
-            # self.get_logger().info(f"position y: {self.pos_y}")
+            self.get_logger().info(f"position x: {self.pos_x}")
+            self.get_logger().info(f"position y: {self.pos_y}")
             # self.get_logger().info(f"position z: {self.pos_z}")
+            
 
-            self.service_request.cmd = f'rc {vel_x_loc * self.vel_ratio} {vel_y_loc * self.vel_ratio} {0.0 * self.vel_ratio} {0.0 * self.vel_ratio}'
+            self.service_request.cmd = f'rc {-int(vel_y_loc)} {int(vel_x_loc)} {0.0} {0.0}'
+            self.get_logger().info(self.service_request.cmd)
+            # self.service_request.cmd = f'rc {0 * self.vel_ratio} {10 * self.vel_ratio} {0.0 * self.vel_ratio} {0.0 * self.vel_ratio}'
+
             self.tello_service_client.call_async(self.service_request)
+
             Timer(0.1, self.flying_func).start()
         else:    
             self.get_logger().info(f'Goal position reached: {self.pos_z}')
-            self.service_request.cmd = f'rc 0 0 0 0.0'
+            self.service_request.cmd = f'rc 0.0 0.0 0.0 0.0'
             self.tello_service_client.call_async(self.service_request)
 
-            # if self.index < len(self.points)-1:
-            #     self.index += 1
-            # else:
-            #     self.action_done = True
-            #     self.index = 0
+            if self.index < len(self.points)-1:
+                self.index += 1
+                self.pid_x.reset_state()
+                self.pid_y.reset_state()
+                self.pid_z.reset_state()
+                self.pid_yaw.reset_state()
+                self.get_logger().info(f'{self.index}')
+            else:
+                self.action_done = True
+                self.index = 0
+            # self.action_done = True
 
-            self.action_done = True
             self.state = self.TelloState.HOVERING
             self.controller()
             
