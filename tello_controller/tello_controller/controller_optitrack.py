@@ -34,33 +34,21 @@ class ControllerNode(Node):
 
     pos_x = pos_y = pos_z = ori_roll = ori_pitch = ori_yaw = 0.0
 
-    pid_x = PIDController(1.5, 0.001, 0.5)
+    pid_x = PIDController(1.5, 0.001, 0.5)      # sprawdzić nastawy
     pid_y = PIDController(1.5, 0.001, 0.5)
     pid_z = PIDController(1.5, 0.001, 0.5)
     pid_yaw = PIDController(1.0, 0.0001, 0.5, rotation=True)
 
     index = 0
-    # points = [
-    #     [0.0, 1.0, 0.75, 0.0],
-    #     [0.0, 1.0, 0.75, 3.14],
-    #     [-1.0, 1.0, 0.75, -1.57],
-    #     [-2.0, 1.0, 0.75, -1.57],
-    #     [-2.0, 0.0, 0.75, 0.0],
-    #     [-2.0, -1.0, 0.75, 0.0],
-    #     [-1.0, -1.0, 0.75, 1.57],
-    #     [0.0, -1.0, 0.75, 3.14],
-    #     [0.0, 0.0, 0.75, 3.14]]
-
-    points = [
+    points = [  # punkty do testowania latania w laboratorium
         [1.0, 0.0, 0.0, 0.0],
         [1.0, 0.5, 0.0, 0.0],
         [-1.0, 0.5, 0.0, 0.0],
         [0.0, 0.0, 0.0, 0.0]]
-
-    # visited_aruco = []
-    # # last_marker = False
-    # points = [[2.15, -1.0, 0.75,  3.14]]
-    # aruco_dict = {
+   
+    # visited_aruco = []                    # punkty odwiedzone
+    # points = [[2.15, -1.0, 0.75,  3.14]]  # punkt początkowy przed 1 aruco
+    # aruco_dict = {                        # punkty względne do oblecenia konstrukcji "L"
     #     0: [[0.0, 0.65, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
     #     1: [[-0.35, 0.0, 0.0, 4.71], [ 0.0, 0.27, 0.0, 0.0]],
     #     2: [[0.0, 0.67, 0.0, 0.0]],
@@ -190,7 +178,6 @@ class ControllerNode(Node):
             
         self.get_logger().info(f'index = {self.points[self.index]}')
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.points[self.index]
-
         # self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = [1.0, 0.0, 0.0, 0.0]
         
         dist_err = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2)
@@ -238,6 +225,11 @@ class ControllerNode(Node):
             elif vel_y_loc < -15:
                 vel_y_loc = -15
 
+            # uproszczony zapis powyższych warunków - do sprawdzenia
+            # vel_x_loc = max(-6.0, min(6.0, vel_x_loc))
+            # vel_y_loc = max(-6.0, min(6.0, vel_y_loc))
+            # vel_x_loc = max(-15, min(15, vel_x_loc))
+            # vel_y_loc = max(-15, min(15, vel_y_loc))
             
 
             self.get_logger().info(f"vel x: {vel_x_loc}")
@@ -251,7 +243,6 @@ class ControllerNode(Node):
             self.service_request.cmd = f'rc {-int(vel_y_loc)} {int(vel_x_loc)} {0.0} {0.0}'
             self.get_logger().info(self.service_request.cmd)
             # self.service_request.cmd = f'rc {0 * self.vel_ratio} {10 * self.vel_ratio} {0.0 * self.vel_ratio} {0.0 * self.vel_ratio}'
-
             self.tello_service_client.call_async(self.service_request)
 
             Timer(0.1, self.flying_func).start()
@@ -266,7 +257,7 @@ class ControllerNode(Node):
                 self.pid_y.reset_state()
                 self.pid_z.reset_state()
                 self.pid_yaw.reset_state()
-                self.get_logger().info(f'{self.index}')
+                # self.get_logger().info(f'{self.index}')
             else:
                 self.action_done = True
                 self.index = 0
@@ -300,5 +291,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
 
