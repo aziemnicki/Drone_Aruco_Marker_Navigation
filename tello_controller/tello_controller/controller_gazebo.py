@@ -39,10 +39,8 @@ class ControllerNode(Node):
     pid_z = PIDController(0.6, 0.001, 0.25)
     pid_yaw = PIDController(0.7, 0.0, 0.25, rotation=True)
 
-    vel_ratio = 1.0
     index = 0
     visited_aruco = []
-    # last_marker = False
     points = [[2.15, -1.0, 0.75,  3.14]]
     aruco_dict = {
         0: [[0.0, 0.65, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
@@ -177,7 +175,7 @@ class ControllerNode(Node):
             vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
             vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
-            self.service_request.cmd = f'rc {vel_x_loc * self.vel_ratio} {vel_y_loc * self.vel_ratio} {vel_z_glob * self.vel_ratio} {vel_yaw * self.vel_ratio}'
+            self.service_request.cmd = f'rc {vel_x_loc } {vel_y_loc} {vel_z_glob} {vel_yaw}'
             self.tello_service_client.call_async(self.service_request)
             Timer(0.1, self.mission_func).start()
         else:    
