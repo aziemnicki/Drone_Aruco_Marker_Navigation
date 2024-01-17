@@ -52,6 +52,8 @@ class ControllerNode(Node):
         6: [[0.1, 0.0, 0.0, -1.57], [0.0, -0.35, 0.0, 0.0]]
         }
 
+    return_points = []
+    return_done = False
 
     def __init__(self):
         super().__init__('controller_node')
@@ -118,8 +120,10 @@ class ControllerNode(Node):
             self.taking_off_func()
 
         if self.state == self.TelloState.HOVERING:
-            if self.action_done:
+            if self.action_done and self.return_done:
                 self.landing_func()
+            elif self.action_done:
+                self.return_function()
             else:
                 self.flying_func()
 
@@ -156,6 +160,25 @@ class ControllerNode(Node):
             self.mission_func()
     
 
+    def return_path(self):
+        self.get_logger().info(f"POINTS{self.points}")
+        self.return_points = list(reversed(self.points))
+        to_del = []
+        for i in range(len(self.return_points)-2):
+            self.return_points[i][3]=self.ori_yaw
+            if self.return_points[i][0] ==  self.return_points[i+1][0] == self.return_points[i+2][0]: 
+                to_del.append(i+1)
+            if self.return_points[i][1] ==  self.return_points[i+1][1] == self.return_points[i+2][1]: 
+                    to_del.append(i+1)
+        self.return_points[-1][3]=self.ori_yaw
+        self.return_points[-2][3]=self.ori_yaw
+        for i, j in enumerate(to_del):
+            del self.return_points[j-i]
+        
+        self.get_logger().info(f"RETURN POINTS{self.return_points}")
+
+
+
     def mission_func(self):
         # misja do wykonania
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
@@ -179,19 +202,57 @@ class ControllerNode(Node):
             self.tello_service_client.call_async(self.service_request)
             Timer(0.1, self.mission_func).start()
         else:    
-            self.get_logger().info(f'Goal position reached: {self.pos_z}')
+            self.get_logger().info(f'Goal position reached')
             self.service_request.cmd = f'rc 0 0 0 0.0'
             self.tello_service_client.call_async(self.service_request)
 
-            if self.index < len(self.points)-1:
+            if self.index <= len(self.points)-2:
                 self.index += 1
             else:
+                self.return_path()
                 self.action_done = True
                 self.index = 0
 
             self.state = self.TelloState.HOVERING
             self.controller()
             
+
+    def return_function(self):
+        
+        while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
+
+        self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.return_points[self.index]
+        self.get_logger().info(f"SETPOINT {self.return_points[self.index]}")
+
+        dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
+        angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
+
+        if dist > 0.05 or angle_diff > 0.018:
+            vel_x_glob = self.pid_x(self.pos_x)
+            vel_y_glob = self.pid_y(self.pos_y)
+            vel_z_glob = self.pid_z(self.pos_z)
+            vel_yaw = self.pid_yaw(self.ori_yaw)
+            
+            vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
+            vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
+
+            self.service_request.cmd = f'rc {vel_x_loc } {vel_y_loc} {vel_z_glob} {vel_yaw}'
+            self.tello_service_client.call_async(self.service_request)
+            Timer(0.1, self.mission_func).start()
+        else:    
+            self.get_logger().info(f'Goal position reached: {self.pos_z}')
+            self.service_request.cmd = f'rc 0 0 0 0.0'
+            self.tello_service_client.call_async(self.service_request)
+
+            if self.index < len(self.return_points)-1:
+                self.index += 1
+            else:
+                self.return_done = True
+                self.index = 0
+
+            self.state = self.TelloState.HOVERING
+            self.controller()
 
     def landing_func(self):
         self.state = self.TelloState.LANDING
