@@ -227,8 +227,10 @@ class ControllerNode(Node):
 
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
+        self.get_logger().info(f"distance {dist}")
 
-        if dist > 0.05 or angle_diff > 0.018:
+        # if dist > 0.05 or angle_diff > 0.018:
+        if dist > 0.05 :
             vel_x_glob = self.pid_x(self.pos_x)
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
@@ -237,9 +239,11 @@ class ControllerNode(Node):
             vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
             vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
-            self.service_request.cmd = f'rc {vel_x_loc } {vel_y_loc} {vel_z_glob} {vel_yaw}'
+            self.service_request.cmd = f'rc {vel_x_loc } {vel_y_loc} {vel_z_glob} {0}'
+            self.get_logger().info(f"REQUEST {self.service_request}")
+
             self.tello_service_client.call_async(self.service_request)
-            Timer(0.1, self.mission_func).start()
+            Timer(0.1, self.return_function).start()
         else:    
             self.get_logger().info(f'Goal position reached: {self.pos_z}')
             self.service_request.cmd = f'rc 0 0 0 0.0'
