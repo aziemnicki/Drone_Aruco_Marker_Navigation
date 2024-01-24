@@ -1,15 +1,12 @@
 from tello_msgs.srv import TelloAction
 from tello_msgs.msg import TelloResponse
 from tello_interface.srv import TelloState
-
 import rclpy
 from rclpy.node import Node
-
 from std_msgs.msg import Empty
 from geometry_msgs.msg import Twist, Pose
 from gazebo_msgs.msg import ModelStates
 from ros2_aruco_interfaces.msg import ArucoMarkers
-
 import time
 from enum import Enum
 from scipy.spatial.transform import Rotation
@@ -27,13 +24,9 @@ class ControllerNode(Node):
         FLYING = 4
         LANDING = 5
         NONE = 0
-
     state = TelloState.LANDED
     next_state = TelloState.NONE
-    action_done = False
-
     pos_x = pos_y = pos_z = ori_roll = ori_pitch = ori_yaw = 0.0
-
     pid_x = PIDController(0.6, 0.001, 0.25)
     pid_y = PIDController(0.6, 0.001, 0.25)
     pid_z = PIDController(0.6, 0.001, 0.25)
@@ -52,10 +45,9 @@ class ControllerNode(Node):
         6: [[0.1, 0.0, 0.0, -1.57], [0.0, -0.35, 0.0, 0.0]]
         }
 
-    
     new_points = [points[0]]
-
     return_points = []
+    action_done = False
     return_done = False
     to_point_done = False
 
@@ -75,6 +67,9 @@ class ControllerNode(Node):
 
 
     def position_callback(self, msg):
+        '''
+        Odczytanie aktualnej pozycji drona.
+        '''
         idx = msg.name.index('tello_1')
 
         self.pos_x = msg.pose[idx].position.x
@@ -93,6 +88,9 @@ class ControllerNode(Node):
 
 
     def aruco_callback(self, markers):
+        '''
+        Odebranie danych z markera AruCo i dodanie punktów do listy.
+        '''
         for i, marker_id in enumerate(markers.marker_ids):
             if marker_id == 7:
                 break
@@ -107,21 +105,21 @@ class ControllerNode(Node):
     def state_callback(self, request, response):
         response.state = str(self.state)
         response.value = int(self.state.value)
-
         return response
 
 
     def main_callback(self, msg):
         self.get_logger().info('Node activated')
         self.action_done = False
-
         self.state = self.TelloState.LANDED
         self.next_state = self.TelloState.TAKINGOFF
-
         self.controller()
 
 
     def controller(self):
+        '''
+        Logika działania programu.
+        '''
         if self.state == self.TelloState.LANDED and self.next_state == self.TelloState.TAKINGOFF:
             self.taking_off_func()
 
@@ -132,7 +130,6 @@ class ControllerNode(Node):
                 self.get_logger().info("return")
                 self.return_function()
             elif self.return_done:
-                self.get_logger().info("chuj")
                 self.to_point_function()
             else:
                 self.flying_func()
@@ -147,10 +144,11 @@ class ControllerNode(Node):
 
 
     def taking_off_func(self):
+        '''
+        Start drona i utrzymanie na określonej wysokości.
+        '''
         self.state = self.TelloState.TAKINGOFF
         self.next_state = self.TelloState.HOVERING
-
-        # start drona
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
@@ -158,7 +156,10 @@ class ControllerNode(Node):
         self.tello_service_client.call_async(self.service_request)
 
 
-    def flying_func(self):            
+    def flying_func(self):     
+        '''
+        Maszyna stanów.
+        '''
         self.state = self.TelloState.FLYING
         self.next_state = self.TelloState.FLYING
 
@@ -169,7 +170,10 @@ class ControllerNode(Node):
         else:
             self.mission_func()
     
-    def wait_for_number(self):
+    def wait_for_number(self):    
+        '''
+        Oczekiwanie na wprowadzenie zadanego punktu z terminala.
+        '''
         point_number = input('Wprowadz numer punktu: ')
         self.get_logger().info(f'{point_number}')
         if point_number == 'land':
@@ -178,7 +182,9 @@ class ControllerNode(Node):
     
 
     def return_path(self, point_type):
-        # self.get_logger().info(f"POINTS{self.points}")
+        '''
+        Tworzenie listy punktów z pominięciem tych, na wspólnej osi.
+        '''
         self.return_points = list(reversed(point_type))
         to_del = []
         for i in range(len(self.return_points)-2):
@@ -192,30 +198,32 @@ class ControllerNode(Node):
         for i, j in enumerate(to_del):
             del self.return_points[j-i]
         
-        # self.get_logger().info(f"RETURN POINTS{self.return_points}")
+
+    def to_point_path(self):    
+        '''
+        Tworzenie listy punktów aż do wybranego znacznika AruCo.
+        '''
+        num = self.wait_for_number()
+        if num == 'land':
+            pass
+        else:
+            num = int(num)
+            for k, v in self.aruco_dict.items():
+                if k == num-1:
+                    break
+                for i in v:
+                    self.new_points.append([x + y for x, y in zip(self.new_points[-1], i)])
+            self.get_logger().info(f"NEW POINTS{self.new_points}")
 
 
-    def to_point_path(self):
-        
-        num = int(self.wait_for_number())
-        for k, v in self.aruco_dict.items():
-            if k == num-1:
-                break
-            for i in v:
-                self.new_points.append([x + y for x, y in zip(self.new_points[-1], i)])
-
-        self.get_logger().info(f"NEW POINTS{self.new_points}")
-
-
-
-
-    def mission_func(self):
-        # misja do wykonania
+    def mission_func(self):   
+        '''
+        Budowanie mapy położeń znaczników AruCo.
+        '''
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.points[self.index]
-
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
 
@@ -224,7 +232,6 @@ class ControllerNode(Node):
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
-            
             vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
             vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
@@ -247,30 +254,26 @@ class ControllerNode(Node):
             self.controller()
             
 
-    def return_function(self):      
+    def return_function(self):   
+        '''
+        Powrót do pozycji startowej.
+        '''
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.return_points[self.index]
-        # self.get_logger().info(f"SETPOINT {self.return_points[self.index]}")
-
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
-        # self.get_logger().info(f"distance {dist}")
 
         if dist > 0.05 or angle_diff > 0.018:
-        # if dist > 0.05 :
             vel_x_glob = self.pid_x(self.pos_x)
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
-            
             vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
             vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
             self.service_request.cmd = f'rc {vel_x_loc } {vel_y_loc} {vel_z_glob} {0}'
-            # self.get_logger().info(f"REQUEST {self.service_request}")
-
             self.tello_service_client.call_async(self.service_request)
             Timer(0.1, self.return_function).start()
         else:    
@@ -288,31 +291,26 @@ class ControllerNode(Node):
             self.state = self.TelloState.HOVERING
             self.controller()
 
-    def to_point_function(self):      
+    def to_point_function(self):    
+        '''
+        Dolatywanie do zadanego punktu z terminala.
+        '''
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
         self.pid_x.setpoint, self.pid_y.setpoint, self.pid_z.setpoint, self.pid_yaw.setpoint = self.new_points[self.index]
-        self.get_logger().info(f"index {self.index}")
-
         dist = np.sqrt((self.pos_x - self.pid_x.setpoint)**2 + (self.pos_y - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
-        self.get_logger().info(f"distance {dist}")
-        self.get_logger().info(f"{self.new_points[self.index]}")
 
-        # if dist > 0.05 or angle_diff > 0.018:
         if dist > 0.05 :
             vel_x_glob = self.pid_x(self.pos_x)
             vel_y_glob = self.pid_y(self.pos_y)
             vel_z_glob = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
-            
             vel_x_loc = (vel_x_glob * np.cos(self.ori_yaw)) + (vel_y_glob * np.sin(self.ori_yaw))
             vel_y_loc = (-vel_x_glob * np.sin(self.ori_yaw)) + (vel_y_glob * np.cos(self.ori_yaw))
 
             self.service_request.cmd = f'rc {vel_x_loc } {vel_y_loc} {vel_z_glob} {0}'
-            # self.get_logger().info(f"REQUEST {self.service_request}")
-
             self.tello_service_client.call_async(self.service_request)
             Timer(0.1, self.to_point_function).start()
         else:    
@@ -331,11 +329,12 @@ class ControllerNode(Node):
             self.controller()
 
 
-    def landing_func(self):
+    def landing_func(self):   
+        '''
+        Ladowanie drona.
+        '''
         self.state = self.TelloState.LANDING
         self.next_state = self.TelloState.LANDED
-
-        # ladowanie drona
         while not self.tello_service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("Oczekuje na dostepnosc uslugi Tello...")
 
