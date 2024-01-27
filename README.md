@@ -20,13 +20,19 @@ Symulacja odbywa się w programie Gazebo.
 
 ## Podział i organizacja prac
 ### Andrzej Ziemnicki 
->Stworzenie świata symulacji, kontenera Docker, umożliwienie odczytywania pozycji drona w Gazebo i z OptiTrack'a, utrzymanie repozytorium.
+~~~
+Stworzenie świata symulacji, kontenera Docker, umożliwienie odczytywania pozycji drona w Gazebo i z OptiTrack'a, utrzymanie repozytorium.
+~~~
 
 ### Norbert Mostowski
->Implementacja logiki działania programu i maszyny stanów, utworzenie misji dolatywania do punktów oraz logiki ścieżki powrotnej.
+~~~
+Implementacja logiki działania programu i maszyny stanów, utworzenie misji dolatywania do punktów oraz logiki ścieżki powrotnej.
+~~~
 
 ### Jeremiasz Wojciak
->Implementacja tworzenia ścieżki z punktów, odczytywania danych z markerów oraz wprowazdania wyboru punktów. 
+~~~
+Implementacja tworzenia ścieżki z punktów, odczytywania danych z markerów oraz wprowazdania wyboru punktów. 
+~~~
 
 Każde zmiany były na bieżąco konsultowane oraz wprowadzane zgodnie z zasadami CI/CD tak, aby kod ulegał ciągłej optymalizacji i rozbudowania funkcji.
 
@@ -55,39 +61,53 @@ Głównymi celami projektu było stworzenie działającej symulacji z możliwoś
 Domyślnie modele znaczników ArUco w środowisku Gazebo są niewidoczne przez drona, ponieważ ścieżka do ich dostępu jest w nieodpowiednim folderze.
 Aby dron widział znaczniki w swojej kamerze i mógł je rozpoznawać należy przenieść znaczniki do folderu `root/.gazebo/models`. 
 Dodatkowo, aby pobierać aktualną pozycje drona w Gazebo należy do modelu świata (plik  `NAZWA.world`) dodać plugin:
-```
+~~~
 <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
     <ros>
         <namespace>/gazebo</namespace>
     </ros>
     <!-- <update_rate>0.1</update_rate> -->
-</plugin>`
-``````
+</plugin>
+~~~
 Powyższy plugin dodajemy zaraz za linią `<world name='default'>:`
 
 Aby obsługiwać symulację konieczne jest uruchomienie wizualizacji
-> xhost +local:root
+~~~
+ xhost +local:root
+~~~
 
 Po utworzeniu kontenera za pomocą Dockerfile'a należy przejść do katalogu `tello_ros_ws` oraz przebudowanie projektu
-> cd tello_ros_ws<br>
-> source /opt/ros/foxy/setup.bash<br>
-> colcon build --symlink-install<br>
-> source install/setup.bash <br>
+~~~
+cd tello_ros_ws<br>
+source /opt/ros/foxy/setup.bash<br>
+colcon build --symlink-install<br>
+source install/setup.bash <br>
+~~~
 
 Następnie uruchomienie symulacji musi odbywać się w poniższej kolejności
 ### 1. Uruchomienie środowiska
-> ros2 launch tello_gazebo simple_launch.py
+~~~
+ros2 launch tello_gazebo simple_launch.py
+~~~
 ### 2. Uruchomienie Node'a controllera i oczekiwanie za zadanie lotu
-> ros2 run tello_controller controller_gazebo
+~~~
+ros2 run tello_controller controller_gazebo
+~~~
 ### 3. Uruchomienie Node'a wykrywającego znaczniki ArUco
-> ros2 launch ros2_aruco aruco_recognition.launch.py
+~~~
+ros2 launch ros2_aruco aruco_recognition.launch.py
+~~~
 ### 4. Publikacja topica startującego drona
-> ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
+~~~
+ros2 topic pub --once /iisrl/tello_controller std_msgs/msg/Empty
+~~~
 
 Po przeleceniu całej trasy i zapisania punktów znaczników uruchomi się w oknie controllera polecenie zadania punktu, do którego dron ma dolecieć. Wystarczy wpisać numer od 1 do 7 (ilość znaczników).
 
 Opcjonalnie można wyświetlić topic, na który wysyłane są pozycje i ID markerów ArUco po ihc wykryciu. 
-> ros2 topic echo /aruco_markers
+~~~
+ros2 topic echo /aruco_markers
+~~~
 
 Można także w `rviz2` wyświetlić podgląd obrazu z kamery drona wyświetlając topic `/drone1/camera_info`
 
@@ -95,17 +115,23 @@ Można także w `rviz2` wyświetlić podgląd obrazu z kamery drona wyświetlaj�
 ## Instrukcja uruchomienia w laboratorium 
 Aby uruchomić program na rzeczywistym dronie w laboratorium należy na początku połączyć się z nim poprzez WIFI a następnie:
 ### 1. Uruchomić Node'a obsługującego odczyt danych z OptiTrack'a
-> ros2 run optitrack optitrack_node
+~~~
+ros2 run optitrack optitrack_node
+~~~
 
 ### 2. Uruchomić przesyłanie komend za pomocą teleop
-> ros2 launch tello_driver teleop_launch.py
+~~~
+ros2 launch tello_driver teleop_launch.py
+~~~
 
 Dron jest gotowy do wystartowania, w momencie, gdy na ekranie ukaże się podgląd z kamery w osobnym oknie
 
 ### 3. Wykonać kroki 2-4 z uruchomienia symulacji w Gazebo
 
 ### 4. W przpadku konieczności lądowania należy wysłać w osobnym terminalu polecenie
-> ros2 service call /tello_action tello_msgs/TelloAction "{cmd: 'land'}"
+~~~
+ros2 service call /tello_action tello_msgs/TelloAction "{cmd: 'land'}"
+~~~
 
 
 ## Efekt prac w Gazebo
