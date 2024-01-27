@@ -21,14 +21,14 @@ Symulacja odbywa się w programie Gazebo.
 
 ## Podział i organizacja prac
 ### Andrzej Ziemnicki 
-> Stworzenie świata symulacji, kontenera Docker, umożliwienie odczytywania pozycji drona w Gazebo i z OptiTrack'a, utrzymanie repozytorium.
+> Stworzenie świata symulacji, kontenera Docker, implementacja odczytywania danych z markerów, umożliwienie odczytywania pozycji drona w Gazebo, utrzymanie repozytorium.
 
 ### Norbert Mostowski
 > Implementacja logiki działania programu i maszyny stanów, utworzenie misji dolatywania do punktów oraz logiki ścieżki powrotnej.
 
 
 ### Jeremiasz Wojciak
-> Implementacja tworzenia ścieżki z punktów, odczytywania danych z markerów oraz wprowazdania wyboru punktów. 
+> Implementacja tworzenia ścieżki z punktów, umożliwienie odczytywania pozycji drona z OptiTrack'a oraz wprowazdania wyboru punktów. 
 
 Każde zmiany były na bieżąco konsultowane oraz wprowadzane zgodnie z zasadami CI/CD tak, aby kod ulegał ciągłej optymalizacji i rozbudowania funkcji.
 
