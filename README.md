@@ -1,6 +1,7 @@
 # ARL_Tello_and_Aruco
 ## Temat projektu: 
-Budowa mapy otoczenia przy użyciu znaczników ArUco. **bold text**
+**Budowa mapy otoczenia przy użyciu znaczników ArUco.**
+
 ## Założenia 
 - Budowa przestrzeni laboratorium, w którym będzie poruszał się dron.
 - Zbudowanie trasy z naklejonych znaczników AruCo i przypisanie im cech pozwalających na lokalizację jednostki latającej.
@@ -32,7 +33,8 @@ Symulacja odbywa się w programie Gazebo.
 Każde zmiany były na bieżąco konsultowane oraz wprowadzane zgodnie z zasadami CI/CD tak, aby kod ulegał ciągłej optymalizacji i rozbudowania funkcji.
 
 ## Wygląd środowiska w symulacji
-
+![Wygląd całego laboratorium](/images/simulation.png)
+![Stworzona trasa z zamontowanymi markerami ArUco](/images/markers.png)
 
 ## Zakres zrealizowanych prac w symulacji
 Głównymi celami projektu było stworzenie działającej symulacji z możliwością zadawania misji dolecenia do zadanego punktu oraz powrotu do pozycji "home". Zrealizowano następujące cele:
