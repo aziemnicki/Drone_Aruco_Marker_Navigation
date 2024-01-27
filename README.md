@@ -132,7 +132,14 @@ ros2 service call /tello_action tello_msgs/TelloAction "{cmd: 'land'}"
 
 
 ## Efekt prac w Gazebo
+Pierwszy przelot ma na celu zmapowanie ścieżki ii ustalenie pozycji punktów ArUco
+![Główna misja](/images/main_path.gif)
 
+Po doleceniu do ostatniego punktu wykonywana jest funkcja powrotu.
+![Powrót do pozycji home](/images/return_path.gif)
+
+Ostatnim celem jest dolecenie do punktu zadanego w terminalu. Dla przykładu został podany punkt nr 5.
+![Lot do punktu](/images/to_point_path.gif)
 
 
 ## Zakres zrealizowanych prac w laboratorium
