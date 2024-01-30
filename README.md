@@ -130,6 +130,7 @@ W laboratorium przetestowano powyższe rozwiązania i dodano także następując
 | 6. Zadanie rosnącej sekwencji id znaczników AruCo. | Zmniejszenie prawdopodobieństwa odczytania złego znacznika ArUco podczas lotu. Wymagane z uwagi na bardzo duży zasięg odczytywania znaczników (do 4 metrów względem drona). |
 | 7. Zmiana dokładności osiąganej pozycji. | W rzeczywistości występuje dryf drona, który uniemożliwia osiąganie pozycji z dokładnością do 1 cm lub 1 stopnia obrotu. |
 ## Efekt prac w laboratorium
+Efektem prac i testów w laboratorium jest odwzorowanie ścieżki z symulacji oraz przelot przez 4 kolejne punkty. Realizacja została zrobiona na podstawie programu z Gazebo, w którym niezbędne było dodanie warunków poprawnego przeliczenia układów współrzędnych z globanlego do lokalnego. Prędkości przelotu zostału obniżone, a wymiary dostosowane do rzeczywistego stanu. Poniżej przedstawiono działanie programu: 
 ![Przelot drona](/images/flying.gif)
 
 ## Możliwości rozwoju
