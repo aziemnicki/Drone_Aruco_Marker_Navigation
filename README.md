@@ -4,8 +4,8 @@
 ## Założenia 
 - Budowa przestrzeni laboratorium, w którym będzie poruszał się dron
 - Zbudowanie trasy z naklejonych znaczników AruCo i przypisanie im cech pozwalających na lokalizację jednostki latającej
-- Odnajdywanie znaczników zgodnie z poleceniami wysyłanymi z komputera
-- Dolatywanie do punktów wpisanych w terminalu
+- Autonomiczny przelot drona w celu stworzenia mapy punktów z ich współrzędnymi globalnymi
+- Po zmapowaniu punktów możliwe dolatywanie do zadanych z terminala znaczników 
 ## Zastosowane technologie
 Projekt realizowano w kontenerze Docker, który utworzony został na podstawie Dockerfile pomagającym w zainstalowaniu potrzebnych bibliotek. Główne biblioteki wykorzystywane w projecie to:
 - ROS2 foxy
@@ -130,8 +130,11 @@ W laboratorium przetestowano powyższe rozwiązania i dodano także następując
 | 6. Zadanie rosnącej sekwencji id znaczników AruCo. | Zmniejszenie prawdopodobieństwa odczytania złego znacznika ArUco podczas lotu. Wymagane z uwagi na bardzo duży zasięg odczytywania znaczników (do 4 metrów względem drona). |
 | 7. Zmiana dokładności osiąganej pozycji. | W rzeczywistości występuje dryf drona, który uniemożliwia osiąganie pozycji z dokładnością do 1 cm lub 1 stopnia obrotu. |
 ## Efekt prac w laboratorium
+![Przelot drona](/images/flying.gif)
+
 ## Możliwości rozwoju
-W dalszej części rozwoju projektu można przetestować:
+Pracę z rzeczywistym dronem można rozwinąć poprzez dodanie w programie ścieżki powrotnej po ostatnich znacznikach, podobnie jak jest to w symulacji.
+Dodatkowo w dalszej części rozwoju projektu można przetestować:
 * empiryczny dobór optymalnych nastaw dla rzeczywistego drona 
 * przetestowanie programu z większymi prędkościami lotu
 * optymalizacja lotu z większą precyzją pozycjonowania oraz mniejszymi oscylacjami wokół zadanych pozycji
