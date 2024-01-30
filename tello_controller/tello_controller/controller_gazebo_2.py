@@ -24,17 +24,18 @@ class ControllerNode(Node):
 
     index = 0
     visited_aruco = []
-    points = [[2.15, -1.0, 0.75,  3.14]]
+    points=[]
+    # points = [[2.15, -1.0, 0.75, 2.50],[2.15, 0.0, 0.75, 2.50], [2.15, 0.0, 0.75, -2.21], [1.15, 0.0, 0.75, -2.21], [1.15, 0.0, 0.75, 2.50]]
     aruco_dict = {
-        0: [[0.0, 0.65, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
-        1: [[-0.35, 0.0, 0.0, 4.71], [ 0.0, 0.27, 0.0, 0.0]],
+        0: [[0.0, 0.65, 0.0, 0.0], [0.0, 0.0, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
+        1: [[0.0, 0.27, 0.0, 0.0], [0.0, 0.0, 0.0, 4.71]],
         2: [[0.0, 0.67, 0.0, 0.0]],
-        3: [[0.0, 1.07, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
-        4: [[-1.15, 0.0, 0.0, 1.57], [0.0, -0.65, 0.0, 0.0]],
-        5: [[0.0, -0.65, 0.0, 1.57], [0.9, 0.0, 0.0, 0.0]],
-        6: [[0.1, 0.0, 0.0, -1.57], [0.0, -0.35, 0.0, 0.0]]
+        3: [[0.0, 1.07, 0.0, 0.0], [0.0, 0.0, 0.0, -4.71], [-1.15, 0.0, 0.0, 0.0]],
+        4: [[0.0, -1.15, 0.0, 0.0], [0.0, 0.0, 0.0, 1.57], [0.0, -0.65, 0.0, 0.0]],
+        5: [[0.0, -0.65, 0.0, 0.0], [0.0, 0.0, 0.0, 1.57], [0.9, 0.0, 0.0, 0.0]],
+        6: [[0.0, -0.35, 0.0, 0.0], [0.0, 0.0, 0.0, -1.57]]
         }
-
+    aruco = False
 
     def __init__(self):
         super().__init__('controller_node')
@@ -101,11 +102,17 @@ class ControllerNode(Node):
 
         self.service_request.cmd = 'takeoff'
         self.tello_service_client.call_async(self.service_request)
-        time.sleep(5)
+        time.sleep(3)
         self.get_logger().info('Takeoff done!')
 
+        pos_x_loc = self.pos_x
+        pos_y_loc = self.pos_y
+        self.points.append([pos_x_loc, pos_y_loc, 0.75, 3.14] )
+        self.get_logger().info(f"{self.points[0]}")
 
-    def mission_func(self, points = points):
+
+
+    def mission_func(self):
         '''
         Budowanie mapy położeń znaczników AruCo.
         '''
@@ -115,17 +122,25 @@ class ControllerNode(Node):
         pos_x_loc = (self.pos_x * np.cos(self.ori_yaw)) + (self.pos_y * np.sin(self.ori_yaw))
         pos_y_loc = (-self.pos_x * np.sin(self.ori_yaw)) + (self.pos_y * np.cos(self.ori_yaw))
 
-        x_setpoint, y_setpoint, z_setpoint, yaw_setpoint = points[self.index]
+        x_setpoint, y_setpoint, z_setpoint, yaw_setpoint = self.points[self.index]
 
         x_setpoint_loc = (x_setpoint * np.cos(self.ori_yaw)) + (y_setpoint * np.sin(self.ori_yaw))
         y_setpoint_loc = (-x_setpoint * np.sin(self.ori_yaw)) + (y_setpoint * np.cos(self.ori_yaw))
+        # x_setpoint_loc = x_setpoint
+        # y_setpoint_loc = y_setpoint
+        self.get_logger().info(f"setpoint X loc - {round(x_setpoint_loc,3)}")
+        self.get_logger().info(f"setpoint y loc - {round(y_setpoint_loc,3)}")
+        self.get_logger().info(f"setpoint X - {round(x_setpoint, 3)}")
+        self.get_logger().info(f"setpoint y - {round(y_setpoint,3)}")
+
 
         self.pid_x.setpoint = x_setpoint_loc
         self.pid_y.setpoint = y_setpoint_loc
         self.pid_z.setpoint = z_setpoint
         self.pid_yaw.setpoint = yaw_setpoint
 
-        dist_diff = np.sqrt((pos_x_loc - self.pid_x.setpoint)**2 + (pos_y_loc - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
+        # dist_diff = np.sqrt((pos_x_loc - self.pid_x.setpoint)**2 + (pos_y_loc - self.pid_y.setpoint)**2 + (self.pos_z - self.pid_z.setpoint)**2)
+        dist_diff = np.sqrt((pos_x_loc - x_setpoint_loc)**2 + (pos_y_loc - y_setpoint_loc)**2 + (self.pos_z - z_setpoint)**2)
         angle_diff = abs(self.pid_yaw.setpoint - self.ori_yaw)
 
         if dist_diff > 0.05 or angle_diff > 0.018:
@@ -133,6 +148,8 @@ class ControllerNode(Node):
             vel_y = self.pid_y(pos_y_loc)
             vel_z = self.pid_z(self.pos_z)
             vel_yaw = self.pid_yaw(self.ori_yaw)
+            # self.get_logger().info(f"vel X - {vel_x}")
+            # self.get_logger().info(f"vel Y - {vel_y}")
 
             self.service_request.cmd = f'rc {vel_x} {vel_y} {vel_z} {vel_yaw}'
             self.tello_service_client.call_async(self.service_request)
@@ -142,7 +159,7 @@ class ControllerNode(Node):
             self.service_request.cmd = f'rc 0.0 0.0 0.0 0.0'
             self.tello_service_client.call_async(self.service_request)
             
-            if self.index < len(points)-1:
+            if self.index < len(self.points)-1:
                 self.index += 1
                 Timer(0.1, self.mission_func).start()
             else:
