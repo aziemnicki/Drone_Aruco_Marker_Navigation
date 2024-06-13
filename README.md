@@ -1,4 +1,5 @@
-# ARL_Tello_and_Aruco
+# Drone Aruco Marker Navigation
+
 ## Temat projektu: 
 **Budowa mapy otoczenia przy użyciu znaczników ArUco.**
 ## Założenia 
